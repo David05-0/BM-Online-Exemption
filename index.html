@@ -260,6 +260,7 @@
     <div class="firebase-status" id="firebase-status">
       <span class="dot"></span><span id="fb-status-text">Not connected</span>
     </div>
+    <button id="fb-retry-btn" onclick="initFirebase()" style="display:none;background:rgba(255,107,53,.15);border:1px solid rgba(255,107,53,.4);color:var(--accent2);padding:4px 12px;border-radius:20px;font-size:.72rem;cursor:pointer;font-family:'DM Sans',sans-serif;transition:background .15s;" title="Retry Firebase connection">↻ Retry</button>
     <div class="header-badge" id="row-count-badge" style="display:none"></div>
     <div class="header-badge">Overseas Filipino Workers</div>
   </div>
@@ -545,34 +546,43 @@ async function initFirebase() {
   try {
     const app = getApps().length ? getApp() : initializeApp(FB_CREDS);
     db = getFirestore(app);
-    // Mark connected as soon as SDK initialises — no test read needed.
-    // Individual save/load operations will surface permission errors via toasts.
+    // SDK initialised successfully — mark connected.
     firebaseConnected = true;
-    setFirebaseStatus(true);
-    document.getElementById('save-fb-btn').style.display = '';
-    loadSavedDatasets();
-    procOnFirebaseReady();
   } catch(e) {
     firebaseConnected = false;
-    const msg = (e.code === 'permission-denied' || (e.message||'').includes('permission'))
-      ? 'Permission denied'
-      : (e.message || 'Connection failed');
+    const msg = e.message || e.code || 'Connection failed';
     setFirebaseStatus(false, msg);
-    console.error('Firebase init failed:', e.code, e.message);
+    console.error('[Firebase] init error:', e.code, e.message);
+    return;
   }
+  // These run OUTSIDE the try so their errors never shadow the init result.
+  setFirebaseStatus(true);
+  document.getElementById('save-fb-btn').style.display = '';
+  loadSavedDatasets().catch(e => console.warn('[Firebase] loadSavedDatasets:', e.message));
+  procOnFirebaseReady();
 }
 
 function setFirebaseStatus(ok, msg) {
   const el = document.getElementById('firebase-status');
   const txt = document.getElementById('fb-status-text');
-  el.className = 'firebase-status ' + (ok ? 'connected' : (msg === 'Connecting…' ? '' : 'error'));
-  txt.textContent = ok ? 'Firebase connected' : (msg || 'Not connected');
-  if (!ok && msg !== 'Connecting…') {
-    el.title = 'Click to retry connection';
-    el.style.cursor = 'pointer';
-  } else {
+  const retryBtn = document.getElementById('fb-retry-btn');
+  const connecting = msg === 'Connecting…';
+  el.className = 'firebase-status ' + (ok ? 'connected' : (connecting ? '' : 'error'));
+  if (ok) {
+    txt.textContent = 'Firebase connected';
     el.title = '';
-    el.style.cursor = ok ? 'default' : 'wait';
+    el.style.cursor = 'default';
+    if (retryBtn) retryBtn.style.display = 'none';
+  } else if (connecting) {
+    txt.textContent = 'Connecting…';
+    el.title = '';
+    el.style.cursor = 'wait';
+    if (retryBtn) retryBtn.style.display = 'none';
+  } else {
+    txt.textContent = msg || 'Not connected';
+    el.title = msg || '';
+    el.style.cursor = 'default';
+    if (retryBtn) retryBtn.style.display = '';
   }
 }
 
@@ -1427,6 +1437,7 @@ window.deleteProcFromFirebase = async function(id) {
 };
 
 // ── Start Firebase (called last so all functions are defined) ──
+window.initFirebase = initFirebase;
 initFirebase();
 </script>
 </body>
