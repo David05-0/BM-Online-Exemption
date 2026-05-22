@@ -420,6 +420,12 @@
       <input type="file" id="proc-file-input" accept=".xlsx,.xls,.csv" multiple style="display:none">
     </div>
 
+    <!-- Saved Processed Datasets (shown below upload zone when Firebase connected) -->
+    <div class="saved-section" id="proc-saved-section" style="display:none;margin-top:0;max-width:100%;">
+      <h4>☁ Saved Processed Datasets</h4>
+      <div class="saved-list" id="proc-saved-list"><div class="no-saved">Loading…</div></div>
+    </div>
+
     <!-- Toolbar (shown only when data is loaded, matches OFW Dashboard style) -->
     <div class="toolbar" id="proc-toolbar" style="display:none;">
       <div class="toolbar-left" style="flex-direction:column;align-items:flex-start;gap:6px;">
@@ -433,12 +439,6 @@
         <button class="btn-secondary" onclick="document.getElementById('proc-file-input').click()">➕ Add File</button>
         <button class="btn-secondary" onclick="procGoToUpload()">← Back</button>
       </div>
-    </div>
-
-    <!-- Saved Processed Datasets -->
-    <div class="saved-section" id="proc-saved-section" style="display:none;margin-bottom:20px;">
-      <h4>☁ Saved Processed Datasets</h4>
-      <div class="saved-list" id="proc-saved-list"><div class="no-saved">Loading…</div></div>
     </div>
 
     <!-- KPIs -->
@@ -1121,6 +1121,7 @@ function procInitDashboard(fileName) {
   procBuildFilters();
   procApplyFilters();
   document.getElementById('proc-drop-zone').style.display = 'none';
+  document.getElementById('proc-saved-section').style.display = 'none';
   document.getElementById('proc-toolbar').style.display = '';
   document.getElementById('proc-kpis').style.display = '';
   document.getElementById('proc-type-section').style.display = '';
@@ -1137,8 +1138,9 @@ window.procGoToUpload = function() {
   procFiltered = [];
   document.getElementById('proc-toolbar').style.display = 'none';
   document.getElementById('proc-drop-zone').style.display = '';
-  ['proc-kpis','proc-type-section','proc-desk-section','proc-charts-section','proc-table-card','proc-saved-section']
+  ['proc-kpis','proc-type-section','proc-desk-section','proc-charts-section','proc-table-card']
     .forEach(id => document.getElementById(id).style.display = 'none');
+  if (firebaseConnected) loadProcSavedDatasets();
   document.getElementById('proc-loaded-tags').innerHTML = '';
   document.getElementById('proc-save-fb-btn').style.display = 'none';
 };
