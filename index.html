@@ -25,7 +25,8 @@
   .logo span { color:var(--accent); }
   .header-right { display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
   .header-badge { font-size:.7rem; background:rgba(46,156,255,.15); color:var(--accent); border:1px solid rgba(46,156,255,.3); border-radius:20px; padding:3px 10px; font-weight:500; letter-spacing:.5px; text-transform:uppercase; }
-  .firebase-status { font-size:.75rem; display:flex; align-items:center; gap:5px; padding:4px 12px; border-radius:20px; border:1px solid var(--border); }
+  .firebase-status { font-size:.75rem; display:flex; align-items:center; gap:5px; padding:4px 12px; border-radius:20px; border:1px solid var(--border); transition:border-color .2s, background .2s; }
+  .firebase-status.error:hover { border-color:var(--accent2); background:rgba(255,107,53,.08); }
   .firebase-status .dot { width:7px; height:7px; border-radius:50%; background:var(--muted); transition:background .3s; }
   .firebase-status.connected .dot { background:var(--accent3); }
   .firebase-status.error .dot { background:var(--accent2); }
@@ -501,7 +502,7 @@
 
 <!-- Firebase SDK (modular) -->
 <script type="module">
-import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
+import { initializeApp, getApps, getApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
 import { getFirestore, collection, addDoc, getDocs, deleteDoc, doc, serverTimestamp, query, orderBy } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
 
 // ── State ──
@@ -541,7 +542,8 @@ const FB_CREDS = {
 
 async function initFirebase() {
   try {
-    const app = initializeApp(FB_CREDS);
+    setFirebaseStatus(false, 'Connecting…');
+    const app = getApps().length ? getApp() : initializeApp(FB_CREDS);
     db = getFirestore(app);
     // Test connection with a real read
     await getDocs(query(collection(db, 'ofw_datasets'), orderBy('createdAt','desc')));
@@ -567,9 +569,21 @@ async function initFirebase() {
 function setFirebaseStatus(ok, msg) {
   const el = document.getElementById('firebase-status');
   const txt = document.getElementById('fb-status-text');
-  el.className = 'firebase-status ' + (ok ? 'connected' : 'error');
+  el.className = 'firebase-status ' + (ok ? 'connected' : (msg === 'Connecting…' ? '' : 'error'));
   txt.textContent = ok ? 'Firebase connected' : (msg || 'Not connected');
+  if (!ok && msg !== 'Connecting…') {
+    el.title = 'Click to retry connection';
+    el.style.cursor = 'pointer';
+  } else {
+    el.title = '';
+    el.style.cursor = ok ? 'default' : 'wait';
+  }
 }
+
+// ── Firebase status click-to-reconnect ──
+document.getElementById('firebase-status').addEventListener('click', () => {
+  if (!firebaseConnected) initFirebase();
+});
 
 // ── Save to Firebase ──
 window.openSaveModal = function() {
