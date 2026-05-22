@@ -6,6 +6,7 @@
 <title>OFW Dashboard</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,300&display=swap" rel="stylesheet">
 <style>
   :root {
@@ -43,7 +44,60 @@
   .btn-skip { background:none; border:1px solid var(--border); color:var(--muted); padding:11px 20px; border-radius:9px; font-size:.9rem; cursor:pointer; font-family:'DM Sans',sans-serif; transition:color .15s,border-color .15s; }
   .btn-skip:hover { color:var(--text); border-color:var(--text); }
 
-    /* UPLOAD SCREEN */
+  
+  /* TAB NAV */
+  .tab-nav { display:flex; gap:4px; padding:0 36px; background:rgba(11,15,26,.9); border-bottom:1px solid var(--border); }
+  .tab-btn { padding:12px 20px; font-size:.83rem; font-weight:600; font-family:'Syne',sans-serif; cursor:pointer; border:none; background:none; color:var(--muted); border-bottom:2px solid transparent; margin-bottom:-1px; transition:color .15s,border-color .15s; letter-spacing:.3px; }
+  .tab-btn:hover { color:var(--text); }
+  .tab-btn.active { color:var(--accent); border-bottom-color:var(--accent); }
+  .tab-page { display:none; }
+  .tab-page.active { display:block; }
+
+  /* PROCESSED TAB */
+  .proc-kpi-row { display:grid; grid-template-columns:repeat(auto-fit,minmax(160px,1fr)); gap:14px; margin-bottom:22px; }
+  .proc-kpi { background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:18px 20px; position:relative; overflow:hidden; transition:transform .2s,border-color .2s; }
+  .proc-kpi:hover { transform:translateY(-2px); border-color:var(--accent); }
+  .proc-kpi::after { content:''; position:absolute; top:0; left:0; right:0; height:3px; border-radius:12px 12px 0 0; }
+  .proc-kpi:nth-child(1)::after{background:var(--accent);}
+  .proc-kpi:nth-child(2)::after{background:var(--accent2);}
+  .proc-kpi:nth-child(3)::after{background:var(--accent3);}
+  .proc-kpi:nth-child(4)::after{background:var(--accent4);}
+  .proc-kpi:nth-child(5)::after{background:#ffc107;}
+  .proc-kpi:nth-child(6)::after{background:#ff4d6d;}
+  .proc-kpi-label { font-size:.68rem; text-transform:uppercase; letter-spacing:.6px; color:var(--muted); margin-bottom:8px; font-weight:500; }
+  .proc-kpi-value { font-family:'Syne',sans-serif; font-size:2rem; font-weight:800; line-height:1; }
+  .proc-kpi:nth-child(1) .proc-kpi-value{color:var(--accent);}
+  .proc-kpi:nth-child(2) .proc-kpi-value{color:var(--accent2);}
+  .proc-kpi:nth-child(3) .proc-kpi-value{color:var(--accent3);}
+  .proc-kpi:nth-child(4) .proc-kpi-value{color:var(--accent4);}
+  .proc-kpi:nth-child(5) .proc-kpi-value{color:#ffc107;}
+  .proc-kpi:nth-child(6) .proc-kpi-value{color:#ff4d6d;}
+  .proc-upload-zone { background:var(--surface); border:2px dashed var(--border); border-radius:16px; padding:48px; text-align:center; cursor:pointer; transition:border-color .2s,background .2s; margin-bottom:24px; }
+  .proc-upload-zone:hover,.proc-upload-zone.drag-over { border-color:var(--accent3); background:rgba(0,229,160,.04); }
+  .proc-upload-zone h3 { font-family:'Syne',sans-serif; font-size:1.2rem; font-weight:700; margin-bottom:6px; }
+  .proc-upload-zone p { color:var(--muted); font-size:.85rem; margin-bottom:18px; }
+  .type-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(130px,1fr)); gap:10px; margin-bottom:22px; }
+  .type-card { background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:14px 16px; text-align:center; }
+  .type-card-label { font-size:.7rem; text-transform:uppercase; letter-spacing:.5px; color:var(--muted); margin-bottom:6px; }
+  .type-card-value { font-family:'Syne',sans-serif; font-size:1.6rem; font-weight:800; color:var(--accent3); }
+  .desk-row { display:flex; gap:10px; flex-wrap:wrap; margin-bottom:22px; }
+  .desk-card { background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:12px 20px; display:flex; align-items:center; gap:12px; }
+  .desk-dot { width:8px; height:8px; border-radius:50%; flex-shrink:0; }
+  .desk-name { font-size:.82rem; color:var(--muted); }
+  .desk-count { font-family:'Syne',sans-serif; font-size:1.3rem; font-weight:800; color:var(--text); margin-left:auto; }
+  .proc-charts { display:grid; grid-template-columns:1fr 1fr; gap:18px; margin-bottom:22px; }
+  @media(max-width:900px){.proc-charts{grid-template-columns:1fr;}}
+  .proc-table-filters { display:flex; gap:10px; flex-wrap:wrap; margin-bottom:14px; }
+  .proc-table-filters select,.proc-table-filters input { background:var(--surface2); border:1px solid var(--border); color:var(--text); padding:7px 12px; border-radius:8px; font-size:.83rem; font-family:'DM Sans',sans-serif; outline:none; }
+  .proc-table-filters select:focus,.proc-table-filters input:focus { border-color:var(--accent3); }
+  .badge-type { display:inline-block; padding:2px 9px; border-radius:20px; font-size:.7rem; font-weight:600; border:1px solid; }
+  .badge-CE  { background:rgba(46,156,255,.15);  color:var(--accent);  border-color:rgba(46,156,255,.3);  }
+  .badge-TCW { background:rgba(0,229,160,.12);   color:var(--accent3); border-color:rgba(0,229,160,.3);   }
+  .badge-NRF { background:rgba(255,107,53,.12);  color:var(--accent2); border-color:rgba(255,107,53,.3);  }
+  .badge-SE  { background:rgba(198,120,255,.12); color:var(--accent4); border-color:rgba(198,120,255,.3); }
+  .badge-OTHER{ background:rgba(255,193,7,.12);  color:#ffc107;        border-color:rgba(255,193,7,.3);   }
+
+  /* UPLOAD SCREEN */
   #upload-screen { display:flex; flex-direction:column; align-items:center; justify-content:center; min-height:calc(100vh - 62px); padding:40px; }
   .upload-card { background:var(--surface); border:2px dashed var(--border); border-radius:20px; padding:64px 80px; text-align:center; max-width:560px; width:100%; cursor:pointer; transition:border-color .2s,background .2s,transform .2s; }
   .upload-card:hover,.upload-card.drag-over { border-color:var(--accent); background:rgba(46,156,255,.05); transform:translateY(-2px); }
@@ -210,6 +264,13 @@
   </div>
 </header>
 
+<!-- TAB NAV -->
+<nav class="tab-nav">
+  <button class="tab-btn active" onclick="switchTab('ofw')" id="tab-btn-ofw">📊 OFW Dashboard</button>
+  <button class="tab-btn" onclick="switchTab('processed')" id="tab-btn-processed">✅ Processed</button>
+</nav>
+
+<div id="tab-ofw" class="tab-page active">
 <!-- UPLOAD SCREEN -->
 <div id="upload-screen">
   <div class="upload-card" id="drop-zone">
@@ -321,6 +382,97 @@
   </div>
 </div>
 
+</div><!-- /tab-ofw -->
+
+<!-- PROCESSED TAB -->
+<div id="tab-processed" class="tab-page">
+  <div style="padding:28px 36px;">
+
+    <!-- Upload zone -->
+    <div class="proc-upload-zone" id="proc-drop-zone" onclick="document.getElementById('proc-file-input').click()">
+      <div style="font-size:2rem;margin-bottom:12px;">📋</div>
+      <h3>Upload Processed Clients File</h3>
+      <p>Supports Excel (.xlsx) or CSV with columns: First Name, Last Name, Sex, Destination, Position, Region, Age, Type, Date, Counter</p>
+      <button class="upload-btn" style="background:var(--accent3);pointer-events:none;">⬆ Choose File</button>
+      <input type="file" id="proc-file-input" accept=".xlsx,.xls,.csv" multiple style="display:none">
+    </div>
+
+    <!-- Loaded files tags -->
+    <div id="proc-loaded-tags" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:18px;"></div>
+
+    <!-- KPIs -->
+    <div class="proc-kpi-row" id="proc-kpis" style="display:none">
+      <div class="proc-kpi"><div class="proc-kpi-label">Total Processed</div><div class="proc-kpi-value" id="pkpi-total">0</div></div>
+      <div class="proc-kpi"><div class="proc-kpi-label">CE / CE-CJ</div><div class="proc-kpi-value" id="pkpi-ce">0</div></div>
+      <div class="proc-kpi"><div class="proc-kpi-label">TCW</div><div class="proc-kpi-value" id="pkpi-tcw">0</div></div>
+      <div class="proc-kpi"><div class="proc-kpi-label">NRF</div><div class="proc-kpi-value" id="pkpi-nrf">0</div></div>
+      <div class="proc-kpi"><div class="proc-kpi-label">SE / SE-CJ</div><div class="proc-kpi-value" id="pkpi-se">0</div></div>
+      <div class="proc-kpi"><div class="proc-kpi-label">Others</div><div class="proc-kpi-value" id="pkpi-other">0</div></div>
+    </div>
+
+    <!-- Type breakdown cards -->
+    <div id="proc-type-section" style="display:none;margin-bottom:20px;">
+      <div style="font-family:'Syne',sans-serif;font-size:.85rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px;">By Type</div>
+      <div class="type-grid" id="proc-type-grid"></div>
+    </div>
+
+    <!-- Desk breakdown -->
+    <div id="proc-desk-section" style="display:none;margin-bottom:20px;">
+      <div style="font-family:'Syne',sans-serif;font-size:.85rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px;">By Counter / Desk</div>
+      <div class="desk-row" id="proc-desk-row"></div>
+    </div>
+
+    <!-- Charts -->
+    <div class="proc-charts" id="proc-charts-section" style="display:none">
+      <div class="chart-card"><h3>Processed by Destination</h3><p class="chart-sub">Top countries</p><div class="chart-wrap"><canvas id="proc-chart-dest"></canvas></div></div>
+      <div class="chart-card"><h3>Processed by Date</h3><p class="chart-sub">Daily volume</p><div class="chart-wrap"><canvas id="proc-chart-date"></canvas></div></div>
+      <div class="chart-card"><h3>Processed by Position</h3><p class="chart-sub">Top job positions</p><div class="chart-wrap"><canvas id="proc-chart-pos"></canvas></div></div>
+      <div class="chart-card"><h3>Gender Distribution</h3><p class="chart-sub">Male vs Female</p><div class="chart-wrap pie-wrap"><canvas id="proc-chart-gender"></canvas></div></div>
+    </div>
+
+    <!-- Table -->
+    <div class="table-card" id="proc-table-card" style="display:none">
+      <div class="table-header">
+        <h3>Processed Records</h3>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+          <select id="proc-filter-type" style="background:var(--surface2);border:1px solid var(--border);color:var(--text);padding:7px 12px;border-radius:8px;font-size:.83rem;font-family:'DM Sans',sans-serif;outline:none;">
+            <option value="">All Types</option>
+          </select>
+          <select id="proc-filter-desk" style="background:var(--surface2);border:1px solid var(--border);color:var(--text);padding:7px 12px;border-radius:8px;font-size:.83rem;font-family:'DM Sans',sans-serif;outline:none;">
+            <option value="">All Desks</option>
+          </select>
+          <select id="proc-filter-date" style="background:var(--surface2);border:1px solid var(--border);color:var(--text);padding:7px 12px;border-radius:8px;font-size:.83rem;font-family:'DM Sans',sans-serif;outline:none;">
+            <option value="">All Dates</option>
+          </select>
+          <input class="search-input" type="text" id="proc-search" placeholder="🔍 Search name, position...">
+        </div>
+      </div>
+      <div style="overflow-x:auto">
+        <table>
+          <thead><tr>
+            <th>Name</th>
+            <th>Sex</th>
+            <th>Position</th>
+            <th>Destination</th>
+            <th>Region</th>
+            <th>Age</th>
+            <th>Type</th>
+            <th>Remarks</th>
+            <th>Date</th>
+            <th>Desk</th>
+          </tr></thead>
+          <tbody id="proc-table-body"></tbody>
+        </table>
+      </div>
+      <div class="pagination">
+        <span id="proc-page-info"></span>
+        <button class="page-btn" id="proc-prev-btn" onclick="procChangePage(-1)">← Prev</button>
+        <button class="page-btn" id="proc-next-btn" onclick="procChangePage(1)">Next →</button>
+      </div>
+    </div>
+
+  </div>
+</div><!-- /tab-processed -->
 <div class="toast" id="toast"></div>
 
 <!-- Firebase SDK (modular) -->
@@ -782,6 +934,349 @@ window.showToast=function(msg,type=''){
   t.textContent=msg; t.className='toast '+type+' show';
   setTimeout(()=>t.classList.remove('show'),3500);
 };
+// ══════════════════════════════════════
+// TAB SWITCHING
+// ══════════════════════════════════════
+window.switchTab = function(tab) {
+  document.querySelectorAll('.tab-page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('tab-' + tab).classList.add('active');
+  document.getElementById('tab-btn-' + tab).classList.add('active');
+};
+
+// ══════════════════════════════════════
+// PROCESSED TAB
+// ══════════════════════════════════════
+let procRawData = [];
+let procFiltered = [];
+let procPage = 1;
+const procRowsPerPage = 20;
+let procFiles = [];
+
+const PROC_COL = {
+  firstName:   ['first name','firstname'],
+  middleName:  ['middle name','middlename'],
+  lastName:    ['last name','lastname'],
+  sex:         ['sex','gender'],
+  birthplace:  ['birthplace'],
+  destination: ['destination','country of destination','country'],
+  position:    ['position','position of worker','job title'],
+  municipality:['municipality'],
+  province:    ['province'],
+  region:      ['region'],
+  age:         ['age'],
+  remarks:     ['remarks'],
+  type:        ['type'],
+  date:        ['date'],
+  cpNumber:    ['cp number','cp','phone','contact'],
+  counter:     ['counter','desk']
+};
+
+function procDetectCol(headers, key) {
+  const lower = headers.map(h => (h||'').toLowerCase().trim());
+  for (const alias of PROC_COL[key]) {
+    const idx = lower.indexOf(alias);
+    if (idx !== -1) return headers[idx];
+  }
+  return null;
+}
+
+let pCols = {};
+
+function procLoadExcel(file) {
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      const wb = XLSX.read(e.target.result, { type: 'array', cellDates: true });
+      const ws = wb.Sheets[wb.SheetNames[0]];
+      // Find header row (skip merged title rows)
+      const range = XLSX.utils.decode_range(ws['!ref']);
+      let headerRow = 0;
+      for (let r = range.s.r; r <= Math.min(range.s.r + 4, range.e.r); r++) {
+        const cell = ws[XLSX.utils.encode_cell({r, c: 0})];
+        if (cell && cell.v && typeof cell.v === 'string' && 
+            (cell.v.toLowerCase().includes('first') || cell.v.toLowerCase().includes('name'))) {
+          headerRow = r; break;
+        }
+      }
+      const rows = XLSX.utils.sheet_to_json(ws, { defval: '', raw: false, range: headerRow });
+      if (!rows.length) { showToast('No data found in ' + file.name, 'error'); return; }
+      procFiles.push({ name: file.name, rowCount: rows.length, rows });
+      procRawData = procFiles.reduce((a, f) => a.concat(f.rows), []);
+      procInitDashboard(file.name);
+    } catch(ex) {
+      showToast('Failed to read ' + file.name + ': ' + ex.message, 'error');
+    }
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+function procLoadCSV(file) {
+  Papa.parse(file, {
+    header: true, skipEmptyLines: true,
+    complete: results => {
+      if (!results.data.length) { showToast('CSV empty: ' + file.name, 'error'); return; }
+      procFiles.push({ name: file.name, rowCount: results.data.length, rows: results.data });
+      procRawData = procFiles.reduce((a, f) => a.concat(f.rows), []);
+      procInitDashboard(file.name);
+    },
+    error: () => showToast('Failed to parse ' + file.name, 'error')
+  });
+}
+
+function procInitDashboard(fileName) {
+  const headers = Object.keys(procRawData[0] || {});
+  pCols = {};
+  for (const key of Object.keys(PROC_COL)) pCols[key] = procDetectCol(headers, key);
+  updateProcFileTags();
+  procBuildFilters();
+  procApplyFilters();
+  document.getElementById('proc-kpis').style.display = '';
+  document.getElementById('proc-type-section').style.display = '';
+  document.getElementById('proc-desk-section').style.display = '';
+  document.getElementById('proc-charts-section').style.display = '';
+  document.getElementById('proc-table-card').style.display = '';
+  showToast('✓ Loaded ' + procRawData.length.toLocaleString() + ' processed records', 'success');
+}
+
+function updateProcFileTags() {
+  const el = document.getElementById('proc-loaded-tags');
+  el.innerHTML = procFiles.map((f, i) => `
+    <span style="display:inline-flex;align-items:center;gap:5px;background:rgba(0,229,160,.1);border:1px solid rgba(0,229,160,.25);color:var(--accent3);border-radius:20px;padding:2px 10px;font-size:.72rem;">
+      📋 ${f.name} <span style="color:var(--muted)">(${f.rowCount.toLocaleString()})</span>
+      <span onclick="removeProcFile(${i})" style="cursor:pointer;color:var(--muted);font-size:.8rem;margin-left:2px;" title="Remove">✕</span>
+    </span>`).join('');
+}
+
+window.removeProcFile = function(idx) {
+  procFiles.splice(idx, 1);
+  procRawData = procFiles.reduce((a, f) => a.concat(f.rows), []);
+  updateProcFileTags();
+  if (!procRawData.length) {
+    ['proc-kpis','proc-type-section','proc-desk-section','proc-charts-section','proc-table-card']
+      .forEach(id => document.getElementById(id).style.display = 'none');
+    return;
+  }
+  procBuildFilters();
+  procApplyFilters();
+};
+
+function procGetVal(row, colKey) {
+  return pCols[colKey] ? (row[pCols[colKey]] || '').toString().trim() : '';
+}
+
+function procBuildFilters() {
+  // Types
+  const types = [...new Set(procRawData.map(r => procGetVal(r,'type')).filter(Boolean))].sort();
+  const typeEl = document.getElementById('proc-filter-type');
+  typeEl.innerHTML = '<option value="">All Types</option>' + types.map(t=>`<option>${t}</option>`).join('');
+  // Desks
+  const desks = [...new Set(procRawData.map(r => procGetVal(r,'counter')).filter(Boolean))].sort();
+  const deskEl = document.getElementById('proc-filter-desk');
+  deskEl.innerHTML = '<option value="">All Desks</option>' + desks.map(d=>`<option>${d}</option>`).join('');
+  // Dates
+  const dates = [...new Set(procRawData.map(r => {
+    const d = procGetVal(r,'date');
+    return d ? d.split('T')[0] : '';
+  }).filter(Boolean))].sort().reverse();
+  const dateEl = document.getElementById('proc-filter-date');
+  dateEl.innerHTML = '<option value="">All Dates</option>' + dates.map(d=>`<option>${d}</option>`).join('');
+}
+
+function procApplyFilters() {
+  const typeF  = document.getElementById('proc-filter-type').value;
+  const deskF  = document.getElementById('proc-filter-desk').value;
+  const dateF  = document.getElementById('proc-filter-date').value;
+  const search = document.getElementById('proc-search').value.toLowerCase();
+  procFiltered = procRawData.filter(r => {
+    if (typeF && procGetVal(r,'type') !== typeF) return false;
+    if (deskF && procGetVal(r,'counter') !== deskF) return false;
+    if (dateF && !procGetVal(r,'date').startsWith(dateF)) return false;
+    if (search) {
+      const haystack = [
+        procGetVal(r,'firstName'), procGetVal(r,'lastName'),
+        procGetVal(r,'position'), procGetVal(r,'destination'),
+        procGetVal(r,'remarks')
+      ].join(' ').toLowerCase();
+      if (!haystack.includes(search)) return false;
+    }
+    return true;
+  });
+  procPage = 1;
+  procRenderKPIs();
+  procRenderTypeBreakdown();
+  procRenderDeskBreakdown();
+  procRenderCharts();
+  procRenderTable();
+}
+
+function procRenderKPIs() {
+  const total = procFiltered.length;
+  document.getElementById('pkpi-total').textContent = total.toLocaleString();
+  const typeCounts = {};
+  procFiltered.forEach(r => {
+    const t = procGetVal(r,'type').toUpperCase();
+    typeCounts[t] = (typeCounts[t]||0) + 1;
+  });
+  const ceCount = Object.entries(typeCounts).filter(([k])=>k.startsWith('CE')).reduce((s,[,v])=>s+v,0);
+  const tcwCount = typeCounts['TCW']||0;
+  const nrfCount = typeCounts['NRF']||0;
+  const seCount = Object.entries(typeCounts).filter(([k])=>k.startsWith('SE')).reduce((s,[,v])=>s+v,0);
+  const other = total - ceCount - tcwCount - nrfCount - seCount;
+  document.getElementById('pkpi-ce').textContent = ceCount.toLocaleString();
+  document.getElementById('pkpi-tcw').textContent = tcwCount.toLocaleString();
+  document.getElementById('pkpi-nrf').textContent = nrfCount.toLocaleString();
+  document.getElementById('pkpi-se').textContent = seCount.toLocaleString();
+  document.getElementById('pkpi-other').textContent = Math.max(0,other).toLocaleString();
+}
+
+function procRenderTypeBreakdown() {
+  const counts = {};
+  procFiltered.forEach(r => {
+    const t = procGetVal(r,'type') || 'Unknown';
+    counts[t] = (counts[t]||0) + 1;
+  });
+  const sorted = Object.entries(counts).sort((a,b)=>b[1]-a[1]);
+  document.getElementById('proc-type-grid').innerHTML = sorted.map(([type,count])=>`
+    <div class="type-card">
+      <div class="type-card-label">${type}</div>
+      <div class="type-card-value">${count}</div>
+    </div>`).join('');
+}
+
+const DESK_COLORS = ['#2e9cff','#ff6b35','#00e5a0','#c678ff','#ffc107','#ff4d6d'];
+function procRenderDeskBreakdown() {
+  const counts = {};
+  procFiltered.forEach(r => {
+    const d = procGetVal(r,'counter') || 'Unknown';
+    counts[d] = (counts[d]||0) + 1;
+  });
+  const sorted = Object.entries(counts).sort((a,b)=>b[1]-a[1]);
+  document.getElementById('proc-desk-row').innerHTML = sorted.map(([desk,count],i)=>`
+    <div class="desk-card">
+      <div class="desk-dot" style="background:${DESK_COLORS[i%DESK_COLORS.length]}"></div>
+      <div class="desk-name">${desk}</div>
+      <div class="desk-count">${count}</div>
+    </div>`).join('');
+}
+
+const COLORS=['#2e9cff','#ff6b35','#00e5a0','#c678ff','#ffc107','#ff4d6d','#38bdf8','#fb7185','#a3e635','#f472b6'];
+
+function procMakeBar(id, label, data) {
+  const ctx = document.getElementById(id).getContext('2d');
+  if (window['_pch_'+id]) window['_pch_'+id].destroy();
+  window['_pch_'+id] = new Chart(ctx, {
+    type:'bar',
+    data:{ labels:data.map(d=>d[0]), datasets:[{ label, data:data.map(d=>d[1]),
+      backgroundColor:data.map((_,i)=>COLORS[i%COLORS.length]+'cc'),
+      borderColor:data.map((_,i)=>COLORS[i%COLORS.length]),
+      borderWidth:1, borderRadius:5 }]},
+    options:{ responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}},
+      scales:{ x:{ticks:{color:'#6b7fa3',font:{size:10},maxRotation:35},grid:{color:'rgba(30,45,71,.5)'}},
+               y:{ticks:{color:'#6b7fa3',font:{size:10}},grid:{color:'rgba(30,45,71,.5)'}} }}
+  });
+}
+
+function procMakePie(id, data) {
+  const ctx = document.getElementById(id).getContext('2d');
+  if (window['_pch_'+id]) window['_pch_'+id].destroy();
+  window['_pch_'+id] = new Chart(ctx, {
+    type:'doughnut',
+    data:{ labels:data.map(d=>d[0]), datasets:[{ data:data.map(d=>d[1]),
+      backgroundColor:COLORS.map(c=>c+'cc'), borderColor:COLORS, borderWidth:2 }]},
+    options:{ responsive:true, maintainAspectRatio:false, cutout:'55%',
+      plugins:{legend:{position:'bottom',labels:{color:'#6b7fa3',font:{size:10},padding:10}}}}
+  });
+}
+
+function topN(map, n=10){ return Object.entries(map).sort((a,b)=>b[1]-a[1]).slice(0,n); }
+function countBy(data, col){ const m={}; data.forEach(r=>{ const v=procGetVal(r,col)||'Unknown'; m[v]=(m[v]||0)+1; }); return m; }
+
+function procRenderCharts() {
+  procMakeBar('proc-chart-dest', 'Workers', topN(countBy(procFiltered,'destination')));
+
+  // Date chart — sort chronologically
+  const dateCounts = countBy(procFiltered, 'date');
+  const dateEntries = Object.entries(dateCounts)
+    .map(([k,v]) => [k.split('T')[0], v])
+    .sort((a,b) => a[0].localeCompare(b[0]));
+  // Merge same dates
+  const dateMap = {};
+  dateEntries.forEach(([d,v]) => { dateMap[d]=(dateMap[d]||0)+v; });
+  const dateData = Object.entries(dateMap).sort((a,b)=>a[0].localeCompare(b[0]));
+  procMakeBar('proc-chart-date', 'Processed', dateData.length ? dateData : [['No dates',0]]);
+
+  procMakeBar('proc-chart-pos', 'Workers', topN(countBy(procFiltered,'position')));
+  procMakePie('proc-chart-gender', topN(countBy(procFiltered,'sex')));
+}
+
+function getTypeBadgeClass(type) {
+  const t = (type||'').toUpperCase();
+  if (t.startsWith('CE')) return 'badge-CE';
+  if (t === 'TCW') return 'badge-TCW';
+  if (t === 'NRF') return 'badge-NRF';
+  if (t.startsWith('SE')) return 'badge-SE';
+  return 'badge-OTHER';
+}
+
+function procRenderTable() {
+  const start = (procPage-1)*procRowsPerPage;
+  const page  = procFiltered.slice(start, start+procRowsPerPage);
+  const tbody = document.getElementById('proc-table-body');
+  tbody.innerHTML = page.length ? page.map(r => {
+    const name = [procGetVal(r,'firstName'), procGetVal(r,'middleName'), procGetVal(r,'lastName')]
+                  .filter(Boolean).join(' ') || '—';
+    const sex  = procGetVal(r,'sex');
+    const sexBadge = sex ? `<span class="badge ${sex.toLowerCase().startsWith('f')?'badge-f':'badge-m'}">${sex}</span>` : '—';
+    const type = procGetVal(r,'type');
+    const date = (procGetVal(r,'date')||'').split('T')[0] || '—';
+    return `<tr>
+      <td style="white-space:nowrap">${name}</td>
+      <td>${sexBadge}</td>
+      <td>${procGetVal(r,'position')||'—'}</td>
+      <td>${procGetVal(r,'destination')||'—'}</td>
+      <td>${procGetVal(r,'region')||'—'}</td>
+      <td>${procGetVal(r,'age')||'—'}</td>
+      <td><span class="badge-type ${getTypeBadgeClass(type)}">${type||'—'}</span></td>
+      <td style="font-size:.78rem;color:var(--muted);max-width:200px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="${procGetVal(r,'remarks')}">${procGetVal(r,'remarks')||'—'}</td>
+      <td style="white-space:nowrap">${date}</td>
+      <td>${procGetVal(r,'counter')||'—'}</td>
+    </tr>`;
+  }).join('') : '<tr><td colspan="10" class="no-data">No records found</td></tr>';
+
+  const total = procFiltered.length;
+  const pages = Math.ceil(total/procRowsPerPage);
+  document.getElementById('proc-page-info').textContent =
+    `${Math.min(start+1,total)}–${Math.min(start+procRowsPerPage,total)} of ${total.toLocaleString()}`;
+  document.getElementById('proc-prev-btn').disabled = procPage <= 1;
+  document.getElementById('proc-next-btn').disabled = procPage >= pages;
+}
+
+window.procChangePage = function(dir) { procPage += dir; procRenderTable(); };
+
+// File input handling
+document.getElementById('proc-file-input').addEventListener('change', e => {
+  const files = Array.from(e.target.files);
+  files.forEach(f => f.name.endsWith('.csv') ? procLoadCSV(f) : procLoadExcel(f));
+  e.target.value = '';
+});
+
+// Drag & drop on processed zone
+const procDrop = document.getElementById('proc-drop-zone');
+procDrop.addEventListener('dragover', e => { e.preventDefault(); procDrop.classList.add('drag-over'); });
+procDrop.addEventListener('dragleave', () => procDrop.classList.remove('drag-over'));
+procDrop.addEventListener('drop', e => {
+  e.preventDefault(); procDrop.classList.remove('drag-over');
+  const files = Array.from(e.dataTransfer.files).filter(f =>
+    f.name.endsWith('.csv') || f.name.endsWith('.xlsx') || f.name.endsWith('.xls'));
+  files.forEach(f => f.name.endsWith('.csv') ? procLoadCSV(f) : procLoadExcel(f));
+});
+
+// Filter listeners
+['proc-filter-type','proc-filter-desk','proc-filter-date'].forEach(id =>
+  document.getElementById(id).addEventListener('change', procApplyFilters));
+document.getElementById('proc-search').addEventListener('input', procApplyFilters);
+
 </script>
 </body>
 </html>
