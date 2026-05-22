@@ -1113,6 +1113,7 @@ function procInitDashboard(fileName) {
   updateProcFileTags();
   procBuildFilters();
   procApplyFilters();
+  document.getElementById('proc-drop-zone').style.display = 'none';
   document.getElementById('proc-kpis').style.display = '';
   document.getElementById('proc-type-section').style.display = '';
   document.getElementById('proc-desk-section').style.display = '';
@@ -1138,6 +1139,7 @@ window.removeProcFile = function(idx) {
   if (!procRawData.length) {
     ['proc-kpis','proc-type-section','proc-desk-section','proc-charts-section','proc-table-card']
       .forEach(id => document.getElementById(id).style.display = 'none');
+    document.getElementById('proc-drop-zone').style.display = '';
     return;
   }
   procBuildFilters();
