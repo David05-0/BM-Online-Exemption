@@ -411,7 +411,7 @@
 <div id="tab-processed" class="tab-page">
   <div style="padding:28px 36px;">
 
-    <!-- Upload zone -->
+    <!-- Upload zone (shown only when no data loaded) -->
     <div class="proc-upload-zone" id="proc-drop-zone" onclick="document.getElementById('proc-file-input').click()">
       <div style="font-size:2rem;margin-bottom:12px;">📋</div>
       <h3>Upload Processed Clients File</h3>
@@ -420,11 +420,18 @@
       <input type="file" id="proc-file-input" accept=".xlsx,.xls,.csv" multiple style="display:none">
     </div>
 
-    <!-- Loaded files tags + toolbar -->
-    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:14px;">
-      <div id="proc-loaded-tags" style="display:flex;flex-wrap:wrap;gap:6px;"></div>
-      <div style="display:flex;gap:8px;">
+    <!-- Toolbar (shown only when data is loaded, matches OFW Dashboard style) -->
+    <div class="toolbar" id="proc-toolbar" style="display:none;">
+      <div class="toolbar-left" style="flex-direction:column;align-items:flex-start;gap:6px;">
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+          <div class="file-label"><span class="dot" style="background:var(--accent3);"></span><span>Processed Dataset</span></div>
+        </div>
+        <div id="proc-loaded-tags" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:2px;"></div>
+      </div>
+      <div class="toolbar-actions">
         <button class="btn-save-fb" id="proc-save-fb-btn" onclick="openProcSaveModal()" style="display:none">🔥 Save to Firebase</button>
+        <button class="btn-secondary" onclick="document.getElementById('proc-file-input').click()">➕ Add File</button>
+        <button class="btn-secondary" onclick="procGoToUpload()">← Back</button>
       </div>
     </div>
 
@@ -1114,6 +1121,7 @@ function procInitDashboard(fileName) {
   procBuildFilters();
   procApplyFilters();
   document.getElementById('proc-drop-zone').style.display = 'none';
+  document.getElementById('proc-toolbar').style.display = '';
   document.getElementById('proc-kpis').style.display = '';
   document.getElementById('proc-type-section').style.display = '';
   document.getElementById('proc-desk-section').style.display = '';
@@ -1122,6 +1130,18 @@ function procInitDashboard(fileName) {
   if (firebaseConnected) document.getElementById('proc-save-fb-btn').style.display = '';
   showToast('✓ Loaded ' + procRawData.length.toLocaleString() + ' processed records', 'success');
 }
+
+window.procGoToUpload = function() {
+  procFiles = [];
+  procRawData = [];
+  procFiltered = [];
+  document.getElementById('proc-toolbar').style.display = 'none';
+  document.getElementById('proc-drop-zone').style.display = '';
+  ['proc-kpis','proc-type-section','proc-desk-section','proc-charts-section','proc-table-card','proc-saved-section']
+    .forEach(id => document.getElementById(id).style.display = 'none');
+  document.getElementById('proc-loaded-tags').innerHTML = '';
+  document.getElementById('proc-save-fb-btn').style.display = 'none';
+};
 
 function updateProcFileTags() {
   const el = document.getElementById('proc-loaded-tags');
@@ -1137,9 +1157,7 @@ window.removeProcFile = function(idx) {
   procRawData = procFiles.reduce((a, f) => a.concat(f.rows), []);
   updateProcFileTags();
   if (!procRawData.length) {
-    ['proc-kpis','proc-type-section','proc-desk-section','proc-charts-section','proc-table-card']
-      .forEach(id => document.getElementById(id).style.display = 'none');
-    document.getElementById('proc-drop-zone').style.display = '';
+    procGoToUpload();
     return;
   }
   procBuildFilters();
