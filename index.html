@@ -381,6 +381,25 @@ function detectCol(headers, key) {
 let cols = {};
 
 // ── Firebase ──
+async function initFirebase(apiKey, authDomain, projectId, silent = false) {
+  try {
+    const app = initializeApp({ apiKey, authDomain, projectId });
+    db = getFirestore(app);
+    await getDocs(collection(db, 'ofw_datasets'));
+    firebaseConnected = true;
+    // Save credentials to localStorage so we never ask again
+    localStorage.setItem('fb_creds', JSON.stringify({ apiKey, authDomain, projectId }));
+    setFirebaseStatus(true);
+    document.getElementById('firebase-modal').classList.add('hidden');
+    document.getElementById('save-fb-btn').style.display = '';
+    if (!silent) showToast('🔥 Firebase connected!', 'success');
+    loadSavedDatasets();
+    return true;
+  } catch(e) {
+    return e;
+  }
+}
+
 window.connectFirebase = async function() {
   const apiKey    = document.getElementById('fb-apiKey').value.trim();
   const authDomain= document.getElementById('fb-authDomain').value.trim();
@@ -397,19 +416,9 @@ window.connectFirebase = async function() {
   btn.innerHTML = '<span class="spinner"></span> Connecting…';
   btn.disabled = true;
 
-  try {
-    const app = initializeApp({ apiKey, authDomain, projectId });
-    db = getFirestore(app);
-    // Test connection
-    await getDocs(collection(db, 'ofw_datasets'));
-    firebaseConnected = true;
-    setFirebaseStatus(true);
-    document.getElementById('firebase-modal').classList.add('hidden');
-    document.getElementById('save-fb-btn').style.display = '';
-    showToast('🔥 Firebase connected!', 'success');
-    loadSavedDatasets();
-  } catch(e) {
-    errEl.textContent = 'Connection failed: ' + (e.message || e);
+  const result = await initFirebase(apiKey, authDomain, projectId, false);
+  if (result !== true) {
+    errEl.textContent = 'Connection failed: ' + (result.message || result);
     errEl.style.display = 'block';
     btn.innerHTML = 'Connect Firebase';
     btn.disabled = false;
@@ -419,6 +428,26 @@ window.connectFirebase = async function() {
 window.skipFirebase = function() {
   document.getElementById('firebase-modal').classList.add('hidden');
 };
+
+// ── Auto-connect if credentials are saved ──
+(async function autoConnect() {
+  try {
+    const saved = localStorage.getItem('fb_creds');
+    if (saved) {
+      const { apiKey, authDomain, projectId } = JSON.parse(saved);
+      if (apiKey && authDomain && projectId) {
+        // Pre-fill fields in case user opens modal manually later
+        document.getElementById('fb-apiKey').value = apiKey;
+        document.getElementById('fb-authDomain').value = authDomain;
+        document.getElementById('fb-projectId').value = projectId;
+        // Connect silently, skip the modal entirely
+        await initFirebase(apiKey, authDomain, projectId, true);
+        return;
+      }
+    }
+  } catch(e) { /* ignore, fall through to show modal */ }
+  // No saved creds — show the modal as normal
+})();
 
 function setFirebaseStatus(ok) {
   const el = document.getElementById('firebase-status');
