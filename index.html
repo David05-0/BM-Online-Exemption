@@ -541,28 +541,24 @@ const FB_CREDS = {
 };
 
 async function initFirebase() {
+  setFirebaseStatus(false, 'Connecting…');
   try {
-    setFirebaseStatus(false, 'Connecting…');
     const app = getApps().length ? getApp() : initializeApp(FB_CREDS);
     db = getFirestore(app);
-    // Test connection with a real read
-    await getDocs(query(collection(db, 'ofw_datasets'), orderBy('createdAt','desc')));
+    // Mark connected as soon as SDK initialises — no test read needed.
+    // Individual save/load operations will surface permission errors via toasts.
     firebaseConnected = true;
     setFirebaseStatus(true);
     document.getElementById('save-fb-btn').style.display = '';
     loadSavedDatasets();
     procOnFirebaseReady();
   } catch(e) {
-    // If permission error — still mark connected, Firestore is reachable
-    if (e.code === 'permission-denied' || e.message?.includes('permission')) {
-      firebaseConnected = false;
-      setFirebaseStatus(false, 'Permission denied');
-      console.error('Firestore rules block access. Set rules to allow read/write: if true');
-    } else {
-      firebaseConnected = false;
-      setFirebaseStatus(false, 'Check console');
-      console.error('Firebase init failed:', e.code, e.message);
-    }
+    firebaseConnected = false;
+    const msg = (e.code === 'permission-denied' || (e.message||'').includes('permission'))
+      ? 'Permission denied'
+      : (e.message || 'Connection failed');
+    setFirebaseStatus(false, msg);
+    console.error('Firebase init failed:', e.code, e.message);
   }
 }
 
