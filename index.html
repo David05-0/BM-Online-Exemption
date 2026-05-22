@@ -266,6 +266,14 @@
   </div>
 </header>
 
+<!-- ERROR BANNER -->
+<div id="error-banner" style="display:none;background:rgba(255,107,53,.12);border-bottom:1px solid rgba(255,107,53,.4);padding:10px 36px;font-size:.82rem;color:var(--accent2);display:none;align-items:center;gap:12px;flex-wrap:wrap;">
+  <span style="font-weight:600;">⚠ JavaScript Error:</span>
+  <span id="error-banner-msg" style="flex:1;font-family:monospace;font-size:.78rem;"></span>
+  <button onclick="window.initFirebase && initFirebase()" style="background:rgba(255,107,53,.2);border:1px solid rgba(255,107,53,.4);color:var(--accent2);padding:4px 14px;border-radius:8px;cursor:pointer;font-size:.78rem;font-family:'DM Sans',sans-serif;">↻ Retry Firebase</button>
+  <button onclick="document.getElementById('error-banner').style.display='none'" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:1rem;" title="Dismiss">✕</button>
+</div>
+
 <!-- TAB NAV -->
 <nav class="tab-nav">
   <button class="tab-btn active" onclick="switchTab('ofw')" id="tab-btn-ofw">📊 OFW Dashboard</button>
@@ -501,6 +509,26 @@
 </div><!-- /tab-processed -->
 <div class="toast" id="toast"></div>
 
+<!-- Global error catcher (catches module errors too) -->
+<script>
+function showBanner(msg) {
+  var b = document.getElementById('error-banner');
+  var m = document.getElementById('error-banner-msg');
+  if (b && m) { m.textContent = msg; b.style.display = 'flex'; }
+  var st = document.getElementById('fb-status-text');
+  if (st && st.textContent !== 'Firebase connected') st.textContent = 'Error – see banner';
+  var el = document.getElementById('firebase-status');
+  if (el) el.className = 'firebase-status error';
+}
+window.addEventListener('error', function(e) {
+  showBanner((e.message || 'Unknown error') + (e.filename ? ' @ ' + e.filename.split('/').pop() + ':' + e.lineno : ''));
+});
+window.addEventListener('unhandledrejection', function(e) {
+  var msg = (e.reason && (e.reason.message || e.reason.code || String(e.reason))) || 'Unhandled promise rejection';
+  showBanner(msg);
+});
+</script>
+
 <!-- Firebase SDK (modular) -->
 <script type="module">
 import { initializeApp, getApps, getApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
@@ -553,6 +581,7 @@ async function initFirebase() {
     const msg = e.message || e.code || 'Connection failed';
     setFirebaseStatus(false, msg);
     console.error('[Firebase] init error:', e.code, e.message);
+    if (typeof showBanner === 'function') showBanner('Firebase: ' + msg);
     return;
   }
   // These run OUTSIDE the try so their errors never shadow the init result.
@@ -579,7 +608,8 @@ function setFirebaseStatus(ok, msg) {
     el.style.cursor = 'wait';
     if (retryBtn) retryBtn.style.display = 'none';
   } else {
-    txt.textContent = msg || 'Not connected';
+    const shortMsg = (msg || 'Not connected').substring(0, 60);
+    txt.textContent = shortMsg;
     el.title = msg || '';
     el.style.cursor = 'default';
     if (retryBtn) retryBtn.style.display = '';
