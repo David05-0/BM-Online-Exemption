@@ -1243,7 +1243,7 @@ function procRenderDeskBreakdown() {
     </div>`).join('');
 }
 
-const COLORS=['#2e9cff','#ff6b35','#00e5a0','#c678ff','#ffc107','#ff4d6d','#38bdf8','#fb7185','#a3e635','#f472b6'];
+const PROC_COLORS=['#2e9cff','#ff6b35','#00e5a0','#c678ff','#ffc107','#ff4d6d','#38bdf8','#fb7185','#a3e635','#f472b6'];
 
 function procMakeBar(id, label, data) {
   const ctx = document.getElementById(id).getContext('2d');
@@ -1251,8 +1251,8 @@ function procMakeBar(id, label, data) {
   window['_pch_'+id] = new Chart(ctx, {
     type:'bar',
     data:{ labels:data.map(d=>d[0]), datasets:[{ label, data:data.map(d=>d[1]),
-      backgroundColor:data.map((_,i)=>COLORS[i%COLORS.length]+'cc'),
-      borderColor:data.map((_,i)=>COLORS[i%COLORS.length]),
+      backgroundColor:data.map((_,i)=>PROC_COLORS[i%PROC_COLORS.length]+'cc'),
+      borderColor:data.map((_,i)=>PROC_COLORS[i%PROC_COLORS.length]),
       borderWidth:1, borderRadius:5 }]},
     options:{ responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}},
       scales:{ x:{ticks:{color:'#6b7fa3',font:{size:10},maxRotation:35},grid:{color:'rgba(30,45,71,.5)'}},
@@ -1266,20 +1266,20 @@ function procMakePie(id, data) {
   window['_pch_'+id] = new Chart(ctx, {
     type:'doughnut',
     data:{ labels:data.map(d=>d[0]), datasets:[{ data:data.map(d=>d[1]),
-      backgroundColor:COLORS.map(c=>c+'cc'), borderColor:COLORS, borderWidth:2 }]},
+      backgroundColor:PROC_COLORS.map(c=>c+'cc'), borderColor:PROC_COLORS, borderWidth:2 }]},
     options:{ responsive:true, maintainAspectRatio:false, cutout:'55%',
       plugins:{legend:{position:'bottom',labels:{color:'#6b7fa3',font:{size:10},padding:10}}}}
   });
 }
 
-function topN(map, n=10){ return Object.entries(map).sort((a,b)=>b[1]-a[1]).slice(0,n); }
-function countBy(data, col){ const m={}; data.forEach(r=>{ const v=procGetVal(r,col)||'Unknown'; m[v]=(m[v]||0)+1; }); return m; }
+function procTopN(map, n=10){ return Object.entries(map).sort((a,b)=>b[1]-a[1]).slice(0,n); }
+function procCountBy(data, col){ const m={}; data.forEach(r=>{ const v=procGetVal(r,col)||'Unknown'; m[v]=(m[v]||0)+1; }); return m; }
 
 function procRenderCharts() {
-  procMakeBar('proc-chart-dest', 'Workers', topN(countBy(procFiltered,'destination')));
+  procMakeBar('proc-chart-dest', 'Workers', procTopN(procCountBy(procFiltered,'destination')));
 
   // Date chart — sort chronologically
-  const dateCounts = countBy(procFiltered, 'date');
+  const dateCounts = procCountBy(procFiltered, 'date');
   const dateEntries = Object.entries(dateCounts)
     .map(([k,v]) => [k.split('T')[0], v])
     .sort((a,b) => a[0].localeCompare(b[0]));
@@ -1289,8 +1289,8 @@ function procRenderCharts() {
   const dateData = Object.entries(dateMap).sort((a,b)=>a[0].localeCompare(b[0]));
   procMakeBar('proc-chart-date', 'Processed', dateData.length ? dateData : [['No dates',0]]);
 
-  procMakeBar('proc-chart-pos', 'Workers', topN(countBy(procFiltered,'position')));
-  procMakePie('proc-chart-gender', topN(countBy(procFiltered,'sex')));
+  procMakeBar('proc-chart-pos', 'Workers', procTopN(procCountBy(procFiltered,'position')));
+  procMakePie('proc-chart-gender', procTopN(procCountBy(procFiltered,'sex')));
 }
 
 function getTypeBadgeClass(type) {
