@@ -382,6 +382,19 @@
   </div>
 </div>
 
+<!-- SAVE PROCESSED MODAL -->
+<div class="modal-overlay hidden" id="proc-save-modal">
+  <div class="save-modal">
+    <h2>🔥 Save Processed Dataset</h2>
+    <p>Give this dataset a name so you can load it again later.</p>
+    <div class="field-group"><label>Dataset Name</label><input id="proc-save-name" placeholder="e.g. Processed May 22 2026"></div>
+    <div class="modal-actions">
+      <button class="btn-skip" onclick="document.getElementById('proc-save-modal').classList.add('hidden')">Cancel</button>
+      <button class="btn-primary" onclick="saveProcToFirebase()" id="proc-save-confirm-btn">Save</button>
+    </div>
+  </div>
+</div>
+
 </div><!-- /tab-ofw -->
 
 <!-- PROCESSED TAB -->
@@ -397,8 +410,19 @@
       <input type="file" id="proc-file-input" accept=".xlsx,.xls,.csv" multiple style="display:none">
     </div>
 
-    <!-- Loaded files tags -->
-    <div id="proc-loaded-tags" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:18px;"></div>
+    <!-- Loaded files tags + toolbar -->
+    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:14px;">
+      <div id="proc-loaded-tags" style="display:flex;flex-wrap:wrap;gap:6px;"></div>
+      <div style="display:flex;gap:8px;">
+        <button class="btn-save-fb" id="proc-save-fb-btn" onclick="openProcSaveModal()" style="display:none">🔥 Save to Firebase</button>
+      </div>
+    </div>
+
+    <!-- Saved Processed Datasets -->
+    <div class="saved-section" id="proc-saved-section" style="display:none;margin-bottom:20px;">
+      <h4>☁ Saved Processed Datasets</h4>
+      <div class="saved-list" id="proc-saved-list"><div class="no-saved">Loading…</div></div>
+    </div>
 
     <!-- KPIs -->
     <div class="proc-kpi-row" id="proc-kpis" style="display:none">
@@ -524,6 +548,7 @@ async function initFirebase() {
     setFirebaseStatus(true);
     document.getElementById('save-fb-btn').style.display = '';
     loadSavedDatasets();
+    procOnFirebaseReady();
   } catch(e) {
     setFirebaseStatus(false);
     console.warn('Firebase auto-connect failed:', e.message);
@@ -1036,6 +1061,7 @@ function procInitDashboard(fileName) {
   document.getElementById('proc-desk-section').style.display = '';
   document.getElementById('proc-charts-section').style.display = '';
   document.getElementById('proc-table-card').style.display = '';
+  if (firebaseConnected) document.getElementById('proc-save-fb-btn').style.display = '';
   showToast('✓ Loaded ' + procRawData.length.toLocaleString() + ' processed records', 'success');
 }
 
@@ -1276,6 +1302,112 @@ procDrop.addEventListener('drop', e => {
 ['proc-filter-type','proc-filter-desk','proc-filter-date'].forEach(id =>
   document.getElementById(id).addEventListener('change', procApplyFilters));
 document.getElementById('proc-search').addEventListener('input', procApplyFilters);
+
+// ══════════════════════════════════════
+// PROCESSED TAB — FIREBASE
+// ══════════════════════════════════════
+
+// Show save button & load saved list once Firebase is ready
+function procOnFirebaseReady() {
+  if (procRawData.length) document.getElementById('proc-save-fb-btn').style.display = '';
+  loadProcSavedDatasets();
+}
+
+window.openProcSaveModal = function() {
+  if (!firebaseConnected) { showToast('Firebase not connected', 'error'); return; }
+  document.getElementById('proc-save-name').value = procFiles.length ? procFiles[0].name.replace(/\.xlsx?|\.csv/i,'') : '';
+  document.getElementById('proc-save-modal').classList.remove('hidden');
+};
+
+window.saveProcToFirebase = async function() {
+  const name = document.getElementById('proc-save-name').value.trim();
+  if (!name) { showToast('Enter a dataset name', 'error'); return; }
+  const btn = document.getElementById('proc-save-confirm-btn');
+  btn.innerHTML = '<span class="spinner"></span> Saving…';
+  btn.disabled = true;
+  try {
+    const CHUNK = 400;
+    const chunks = [];
+    for (let i = 0; i < procRawData.length; i += CHUNK) chunks.push(procRawData.slice(i, i+CHUNK));
+    const docRef = await addDoc(collection(db, 'processed_datasets'), {
+      name,
+      rowCount: procRawData.length,
+      columns: Object.keys(procRawData[0] || {}),
+      chunks: chunks.length,
+      createdAt: serverTimestamp()
+    });
+    for (let i = 0; i < chunks.length; i++) {
+      await addDoc(collection(db, 'processed_datasets', docRef.id, 'chunks'), { index: i, rows: chunks[i] });
+    }
+    document.getElementById('proc-save-modal').classList.add('hidden');
+    showToast('✓ Saved "' + name + '" to Firebase', 'success');
+    loadProcSavedDatasets();
+  } catch(e) {
+    showToast('Save failed: ' + (e.message||e), 'error');
+  } finally {
+    btn.innerHTML = 'Save';
+    btn.disabled = false;
+  }
+};
+
+async function loadProcSavedDatasets() {
+  if (!firebaseConnected) return;
+  const section = document.getElementById('proc-saved-section');
+  const list    = document.getElementById('proc-saved-list');
+  section.style.display = '';
+  list.innerHTML = '<div class="no-saved">Loading…</div>';
+  try {
+    const q = query(collection(db, 'processed_datasets'), orderBy('createdAt','desc'));
+    const snap = await getDocs(q);
+    if (snap.empty) { list.innerHTML = '<div class="no-saved">No saved datasets yet</div>'; return; }
+    list.innerHTML = snap.docs.map(d => {
+      const data = d.data();
+      const date = data.createdAt ? new Date(data.createdAt.seconds*1000).toLocaleDateString() : '—';
+      return `<div class="saved-item">
+        <div class="saved-item-info">
+          <div class="saved-item-name">${data.name||'Unnamed'}</div>
+          <div class="saved-item-meta">${(data.rowCount||0).toLocaleString()} records · ${date}</div>
+        </div>
+        <div class="saved-item-actions">
+          <button class="btn-load" onclick="loadProcFromFirebase('${d.id}','${(data.name||'').replace(/'/g,"\\'")}')">Load</button>
+          <button class="btn-del"  onclick="deleteProcFromFirebase('${d.id}')">✕</button>
+        </div>
+      </div>`;
+    }).join('');
+  } catch(e) {
+    list.innerHTML = '<div class="no-saved">Error: ' + (e.message||e) + '</div>';
+  }
+}
+
+window.loadProcFromFirebase = async function(id, name) {
+  showToast('⏳ Loading from Firebase…', 'info');
+  try {
+    const chunksSnap = await getDocs(query(collection(db, 'processed_datasets', id, 'chunks'), orderBy('index')));
+    let rows = [];
+    chunksSnap.forEach(c => { rows = rows.concat(c.data().rows || []); });
+    if (!rows.length) { showToast('No data found', 'error'); return; }
+    procFiles = [{ name, rowCount: rows.length, rows }];
+    procRawData = rows;
+    procInitDashboard(name);
+    updateProcFileTags();
+    showToast('✓ Loaded "' + name + '"', 'success');
+  } catch(e) {
+    showToast('Load failed: ' + (e.message||e), 'error');
+  }
+};
+
+window.deleteProcFromFirebase = async function(id) {
+  if (!confirm('Delete this saved dataset?')) return;
+  try {
+    const chunksSnap = await getDocs(collection(db, 'processed_datasets', id, 'chunks'));
+    for (const c of chunksSnap.docs) await deleteDoc(c.ref);
+    await deleteDoc(doc(db, 'processed_datasets', id));
+    showToast('Deleted', 'success');
+    loadProcSavedDatasets();
+  } catch(e) {
+    showToast('Delete failed: ' + (e.message||e), 'error');
+  }
+};
 
 </script>
 </body>
