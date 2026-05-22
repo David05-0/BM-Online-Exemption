@@ -29,29 +29,6 @@
   .firebase-status.connected .dot { background:var(--accent3); }
   .firebase-status.error .dot { background:var(--accent2); }
 
-  /* FIREBASE SETUP MODAL */
-  .modal-overlay { position:fixed; inset:0; background:rgba(0,0,0,.7); backdrop-filter:blur(6px); z-index:200; display:flex; align-items:center; justify-content:center; padding:20px; }
-  .modal-overlay.hidden { display:none; }
-  .modal { background:var(--surface); border:1px solid var(--border); border-radius:20px; padding:36px; max-width:580px; width:100%; }
-  .modal h2 { font-family:'Syne',sans-serif; font-size:1.4rem; font-weight:800; margin-bottom:6px; }
-  .modal .modal-sub { color:var(--muted); font-size:.88rem; margin-bottom:24px; line-height:1.6; }
-  .steps { display:flex; flex-direction:column; gap:12px; margin-bottom:24px; }
-  .step { display:flex; gap:12px; align-items:flex-start; }
-  .step-num { width:24px; height:24px; border-radius:50%; background:rgba(46,156,255,.2); color:var(--accent); font-size:.75rem; font-weight:700; display:flex; align-items:center; justify-content:center; flex-shrink:0; margin-top:2px; }
-  .step p { font-size:.84rem; color:var(--muted); line-height:1.5; }
-  .step p strong { color:var(--text); }
-  .field-group { display:flex; flex-direction:column; gap:6px; margin-bottom:14px; }
-  .field-group label { font-size:.72rem; text-transform:uppercase; letter-spacing:.6px; color:var(--muted); font-weight:500; }
-  .field-group input { background:var(--surface2); border:1px solid var(--border); color:var(--text); padding:10px 14px; border-radius:8px; font-size:.88rem; font-family:'DM Sans',sans-serif; outline:none; transition:border-color .15s; width:100%; }
-  .field-group input:focus { border-color:var(--accent); }
-  .field-group input::placeholder { color:var(--muted); }
-  .modal-actions { display:flex; gap:10px; justify-content:flex-end; flex-wrap:wrap; }
-  .btn-primary { background:var(--accent); color:#fff; border:none; padding:11px 28px; border-radius:9px; font-size:.9rem; font-weight:500; cursor:pointer; font-family:'DM Sans',sans-serif; transition:opacity .2s; }
-  .btn-primary:hover { opacity:.85; }
-  .btn-skip { background:none; border:1px solid var(--border); color:var(--muted); padding:11px 20px; border-radius:9px; font-size:.9rem; cursor:pointer; font-family:'DM Sans',sans-serif; transition:color .15s,border-color .15s; }
-  .btn-skip:hover { color:var(--text); border-color:var(--text); }
-  .modal-error { background:rgba(255,107,53,.1); border:1px solid rgba(255,107,53,.3); color:var(--accent2); border-radius:8px; padding:10px 14px; font-size:.83rem; margin-bottom:14px; display:none; }
-
   /* UPLOAD SCREEN */
   #upload-screen { display:flex; flex-direction:column; align-items:center; justify-content:center; min-height:calc(100vh - 62px); padding:40px; }
   .upload-card { background:var(--surface); border:2px dashed var(--border); border-radius:20px; padding:64px 80px; text-align:center; max-width:560px; width:100%; cursor:pointer; transition:border-color .2s,background .2s,transform .2s; }
@@ -194,27 +171,6 @@
 <body>
 <div class="app">
 
-<!-- FIREBASE SETUP MODAL -->
-<div class="modal-overlay" id="firebase-modal">
-  <div class="modal">
-    <h2>🔥 Connect Firebase</h2>
-    <p class="modal-sub">Enter your Firebase project credentials to enable cloud saving. Your data will be stored in Firestore and accessible from any device.</p>
-    <div class="steps">
-      <div class="step"><div class="step-num">1</div><p>Go to <strong>console.firebase.google.com</strong> → Create or open a project</p></div>
-      <div class="step"><div class="step-num">2</div><p>Click <strong>Project Settings → Add App → Web</strong>, then copy the config values below</p></div>
-      <div class="step"><div class="step-num">3</div><p>In Firestore, go to <strong>Build → Firestore Database</strong> → Create database (start in test mode)</p></div>
-    </div>
-    <div class="modal-error" id="firebase-error"></div>
-    <div class="field-group"><label>API Key</label><input id="fb-apiKey" placeholder="AIza..."></div>
-    <div class="field-group"><label>Auth Domain</label><input id="fb-authDomain" placeholder="your-project.firebaseapp.com"></div>
-    <div class="field-group"><label>Project ID</label><input id="fb-projectId" placeholder="your-project-id"></div>
-    <div class="modal-actions">
-      <button class="btn-skip" onclick="skipFirebase()">Skip for now</button>
-      <button class="btn-primary" onclick="connectFirebase()" id="fb-connect-btn">Connect Firebase</button>
-    </div>
-  </div>
-</div>
-
 <!-- SAVE DATASET MODAL -->
 <div class="modal-overlay hidden" id="save-modal">
   <div class="save-modal">
@@ -246,9 +202,9 @@
     <div class="upload-icon">📂</div>
     <h2>Upload OFW Data</h2>
     <p>Import your CSV file to generate the dashboard. Data can be saved to Firebase for cloud access.</p>
-    <button class="upload-btn" onclick="document.getElementById('file-input').click()">⬆ Choose CSV File</button>
-    <input type="file" id="file-input" accept=".csv" style="display:none">
-    <div class="upload-hint">or drag & drop your file here</div>
+    <button class="upload-btn" onclick="document.getElementById('file-input').click()">⬆ Choose CSV Files</button>
+    <input type="file" id="file-input" accept=".csv" multiple style="display:none">
+    <div class="upload-hint">or drag & drop one or more CSV files here</div>
     <div class="col-hint">
       <h4>Expected Columns</h4>
       <div class="col-tags">
@@ -272,15 +228,20 @@
 <!-- DASHBOARD -->
 <div id="dashboard">
   <div class="toolbar">
-    <div class="toolbar-left">
-      <div class="file-label"><span class="dot"></span><span id="file-name-label">data.csv</span></div>
+    <div class="toolbar-left" style="flex-direction:column;align-items:flex-start;gap:6px;">
+      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+        <div class="file-label"><span class="dot"></span><span id="file-name-label">Combined Data</span></div>
+      </div>
+      <div id="loaded-files-list" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:2px;"></div>
     </div>
     <div class="toolbar-actions">
       <button class="btn-save-fb" id="save-fb-btn" onclick="openSaveModal()" style="display:none">🔥 Save to Firebase</button>
-      <button class="btn-secondary" onclick="document.getElementById('file-input2').click()">↻ Load New CSV</button>
+      <button class="btn-secondary" onclick="document.getElementById('file-input2').click()">➕ Add CSV</button>
+      <button class="btn-secondary" onclick="replaceAllCSV()">↻ Replace All</button>
       <button class="btn-secondary" onclick="goToUpload()">← Back</button>
     </div>
-    <input type="file" id="file-input2" accept=".csv" style="display:none">
+    <input type="file" id="file-input2" accept=".csv" multiple style="display:none">
+    <input type="file" id="file-input3" accept=".csv" multiple style="display:none">
   </div>
 
   <!-- Filters -->
@@ -381,73 +342,29 @@ function detectCol(headers, key) {
 let cols = {};
 
 // ── Firebase ──
-async function initFirebase(apiKey, authDomain, projectId, silent = false) {
+// ── Firebase: hardcoded auto-connect ──
+const FB_CREDS = {
+  apiKey:     "AIzaSyAU898V-b7r57_gXhMFHPj3Xt7krnteOkO",
+  authDomain: "bm-online-exemption-dashboard.firebaseapp.com",
+  projectId:  "bm-online-exemption-dashboard"
+};
+
+async function initFirebase() {
   try {
-    const app = initializeApp({ apiKey, authDomain, projectId });
+    const app = initializeApp(FB_CREDS);
     db = getFirestore(app);
     await getDocs(collection(db, 'ofw_datasets'));
     firebaseConnected = true;
-    // Save credentials to localStorage so we never ask again
-    localStorage.setItem('fb_creds', JSON.stringify({ apiKey, authDomain, projectId }));
     setFirebaseStatus(true);
-    document.getElementById('firebase-modal').classList.add('hidden');
     document.getElementById('save-fb-btn').style.display = '';
-    if (!silent) showToast('🔥 Firebase connected!', 'success');
     loadSavedDatasets();
-    return true;
   } catch(e) {
-    return e;
+    setFirebaseStatus(false);
+    console.warn('Firebase auto-connect failed:', e.message);
   }
 }
 
-window.connectFirebase = async function() {
-  const apiKey    = document.getElementById('fb-apiKey').value.trim();
-  const authDomain= document.getElementById('fb-authDomain').value.trim();
-  const projectId = document.getElementById('fb-projectId').value.trim();
-  const errEl     = document.getElementById('firebase-error');
-  errEl.style.display = 'none';
-
-  if (!apiKey || !authDomain || !projectId) {
-    errEl.textContent = 'Please fill in all three fields.';
-    errEl.style.display = 'block'; return;
-  }
-
-  const btn = document.getElementById('fb-connect-btn');
-  btn.innerHTML = '<span class="spinner"></span> Connecting…';
-  btn.disabled = true;
-
-  const result = await initFirebase(apiKey, authDomain, projectId, false);
-  if (result !== true) {
-    errEl.textContent = 'Connection failed: ' + (result.message || result);
-    errEl.style.display = 'block';
-    btn.innerHTML = 'Connect Firebase';
-    btn.disabled = false;
-  }
-};
-
-window.skipFirebase = function() {
-  document.getElementById('firebase-modal').classList.add('hidden');
-};
-
-// ── Auto-connect if credentials are saved ──
-(async function autoConnect() {
-  try {
-    const saved = localStorage.getItem('fb_creds');
-    if (saved) {
-      const { apiKey, authDomain, projectId } = JSON.parse(saved);
-      if (apiKey && authDomain && projectId) {
-        // Pre-fill fields in case user opens modal manually later
-        document.getElementById('fb-apiKey').value = apiKey;
-        document.getElementById('fb-authDomain').value = authDomain;
-        document.getElementById('fb-projectId').value = projectId;
-        // Connect silently, skip the modal entirely
-        await initFirebase(apiKey, authDomain, projectId, true);
-        return;
-      }
-    }
-  } catch(e) { /* ignore, fall through to show modal */ }
-  // No saved creds — show the modal as normal
-})();
+initFirebase();
 
 function setFirebaseStatus(ok) {
   const el = document.getElementById('firebase-status');
@@ -541,7 +458,9 @@ window.loadFromFirebase = async function(id, name) {
     chunksSnap.forEach(c => { rows = rows.concat(c.data().rows || []); });
     if (!rows.length) { showToast('No data found', 'error'); return; }
     rawData = rows;
-    document.getElementById('file-name-label').textContent = name;
+    loadedFiles = [{ name: name, rowCount: rows.length, rows }];
+    updateLoadedFilesTags();
+    document.getElementById('file-name-label').textContent = 'Firebase Dataset';
     document.getElementById('row-count-badge').style.display = '';
     document.getElementById('row-count-badge').textContent = rawData.length.toLocaleString() + ' records';
     initDashboard();
@@ -569,44 +488,92 @@ window.deleteFromFirebase = async function(id) {
 };
 
 // ── File handling ──
-function setupFileInput(inputId) {
-  document.getElementById(inputId).addEventListener('change', e => {
-    const file = e.target.files[0];
-    if (file) processFile(file);
-    e.target.value = '';
+let loadedFiles = []; // { name, rowCount }
+
+function updateLoadedFilesTags() {
+  const el = document.getElementById('loaded-files-list');
+  if (!el) return;
+  el.innerHTML = loadedFiles.map((f,i) => `
+    <span style="display:inline-flex;align-items:center;gap:5px;background:rgba(46,156,255,.1);border:1px solid rgba(46,156,255,.25);color:var(--accent);border-radius:20px;padding:2px 10px;font-size:.72rem;">
+      📄 ${f.name} <span style="color:var(--muted)">(${f.rowCount.toLocaleString()})</span>
+      <span onclick="removeFile(${i})" style="cursor:pointer;color:var(--muted);font-size:.8rem;margin-left:2px;" title="Remove">✕</span>
+    </span>`).join('');
+}
+
+window.removeFile = function(idx) {
+  const removed = loadedFiles[idx]?.name || 'file';
+  loadedFiles.splice(idx, 1);
+  rawData = loadedFiles.reduce((acc, f) => acc.concat(f.rows), []);
+  updateLoadedFilesTags();
+  if (!rawData.length) { goToUpload(); return; }
+  const badge = document.getElementById('row-count-badge');
+  badge.style.display = '';
+  badge.textContent = rawData.length.toLocaleString() + ' records';
+  initDashboard();
+  showToast('Removed ' + removed, 'info');
+};
+
+function parseAndMergeFiles(files, replace = false) {
+  const fileArr = Array.from(files).filter(f => f.name.endsWith('.csv'));
+  if (!fileArr.length) { showToast('Please upload CSV files', 'error'); return; }
+  if (replace) { loadedFiles = []; rawData = []; }
+
+  let pending = fileArr.length;
+  fileArr.forEach(file => {
+    Papa.parse(file, {
+      header: true, skipEmptyLines: true,
+      complete: results => {
+        if (results.data.length) {
+          loadedFiles.push({ name: file.name, rowCount: results.data.length, rows: results.data });
+          rawData = rawData.concat(results.data);
+        }
+        pending--;
+        if (pending === 0) {
+          if (!rawData.length) { showToast('All CSVs were empty', 'error'); return; }
+          updateLoadedFilesTags();
+          const badge = document.getElementById('row-count-badge');
+          badge.style.display = '';
+          badge.textContent = rawData.length.toLocaleString() + ' records';
+          if (firebaseConnected) document.getElementById('save-fb-btn').style.display = '';
+          initDashboard();
+          document.getElementById('upload-screen').style.display = 'none';
+          document.getElementById('dashboard').style.display = 'block';
+          showToast('✓ ' + rawData.length.toLocaleString() + ' total records from ' + loadedFiles.length + ' file(s)', 'success');
+        }
+      },
+      error: () => { pending--; showToast('Failed to parse ' + file.name, 'error'); }
+    });
   });
 }
-setupFileInput('file-input');
-setupFileInput('file-input2');
+
+window.replaceAllCSV = function() {
+  document.getElementById('file-input3').click();
+};
+
+document.getElementById('file-input').addEventListener('change', e => {
+  if (e.target.files.length) parseAndMergeFiles(e.target.files, true);
+  e.target.value = '';
+});
+document.getElementById('file-input2').addEventListener('change', e => {
+  if (e.target.files.length) parseAndMergeFiles(e.target.files, false);
+  e.target.value = '';
+});
+document.getElementById('file-input3').addEventListener('change', e => {
+  if (e.target.files.length) parseAndMergeFiles(e.target.files, true);
+  e.target.value = '';
+});
 
 const dropZone = document.getElementById('drop-zone');
 dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('drag-over'); });
 dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag-over'));
 dropZone.addEventListener('drop', e => {
   e.preventDefault(); dropZone.classList.remove('drag-over');
-  const file = e.dataTransfer.files[0];
-  if (file && file.name.endsWith('.csv')) processFile(file);
-  else showToast('Please upload a CSV file', 'error');
+  const files = Array.from(e.dataTransfer.files).filter(f => f.name.endsWith('.csv'));
+  if (files.length) parseAndMergeFiles(files, true);
+  else showToast('Please drop CSV files', 'error');
 });
 
-function processFile(file) {
-  Papa.parse(file, {
-    header: true, skipEmptyLines: true,
-    complete: results => {
-      if (!results.data.length) { showToast('CSV is empty or invalid', 'error'); return; }
-      rawData = results.data;
-      document.getElementById('file-name-label').textContent = file.name;
-      document.getElementById('row-count-badge').style.display = '';
-      document.getElementById('row-count-badge').textContent = rawData.length.toLocaleString() + ' records';
-      if (firebaseConnected) document.getElementById('save-fb-btn').style.display = '';
-      initDashboard();
-      document.getElementById('upload-screen').style.display = 'none';
-      document.getElementById('dashboard').style.display = 'block';
-      showToast('✓ ' + rawData.length.toLocaleString() + ' records loaded', 'success');
-    },
-    error: () => showToast('Failed to parse CSV', 'error')
-  });
-}
+function processFile(file) { parseAndMergeFiles([file], true); }
 
 window.goToUpload = function() {
   document.getElementById('dashboard').style.display = 'none';
