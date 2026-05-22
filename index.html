@@ -469,6 +469,23 @@
       <div class="chart-card"><h3>Processed by Date</h3><p class="chart-sub">Daily volume</p><div class="chart-wrap"><canvas id="proc-chart-date"></canvas></div></div>
       <div class="chart-card"><h3>Processed by Position</h3><p class="chart-sub">Top job positions</p><div class="chart-wrap"><canvas id="proc-chart-pos"></canvas></div></div>
       <div class="chart-card"><h3>Gender Distribution</h3><p class="chart-sub">Male vs Female</p><div class="chart-wrap pie-wrap"><canvas id="proc-chart-gender"></canvas></div></div>
+      <div class="chart-card" style="grid-column:1/-1;">
+        <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:4px;">
+          <div>
+            <h3>Processed by Region</h3><p class="chart-sub">OFW count per region</p>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px;">
+            <label style="font-size:.78rem;color:var(--muted);">Sort:</label>
+            <select id="proc-region-sort" style="background:var(--surface2);border:1px solid var(--border);color:var(--text);padding:5px 10px;border-radius:7px;font-size:.8rem;font-family:'DM Sans',sans-serif;outline:none;">
+              <option value="desc">Highest First</option>
+              <option value="asc">Lowest First</option>
+              <option value="alpha">A–Z</option>
+              <option value="alpha-desc">Z–A</option>
+            </select>
+          </div>
+        </div>
+        <div class="chart-wrap" style="height:260px;"><canvas id="proc-chart-region"></canvas></div>
+      </div>
     </div>
 
     <!-- Table -->
@@ -476,6 +493,9 @@
       <div class="table-header">
         <h3>Processed Records</h3>
         <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+          <select id="proc-filter-region" style="background:var(--surface2);border:1px solid var(--border);color:var(--text);padding:7px 12px;border-radius:8px;font-size:.83rem;font-family:'DM Sans',sans-serif;outline:none;">
+            <option value="">All Regions</option>
+          </select>
           <select id="proc-filter-type" style="background:var(--surface2);border:1px solid var(--border);color:var(--text);padding:7px 12px;border-radius:8px;font-size:.83rem;font-family:'DM Sans',sans-serif;outline:none;">
             <option value="">All Types</option>
           </select>
@@ -1171,6 +1191,10 @@ function procGetVal(row, colKey) {
 }
 
 function procBuildFilters() {
+  // Regions
+  const regions = [...new Set(procRawData.map(r => procGetVal(r,'region')).filter(Boolean))].sort();
+  const regionEl = document.getElementById('proc-filter-region');
+  regionEl.innerHTML = '<option value="">All Regions</option>' + regions.map(r=>`<option>${r}</option>`).join('');
   // Types
   const types = [...new Set(procRawData.map(r => procGetVal(r,'type')).filter(Boolean))].sort();
   const typeEl = document.getElementById('proc-filter-type');
@@ -1189,11 +1213,13 @@ function procBuildFilters() {
 }
 
 function procApplyFilters() {
+  const regionF = document.getElementById('proc-filter-region').value;
   const typeF  = document.getElementById('proc-filter-type').value;
   const deskF  = document.getElementById('proc-filter-desk').value;
   const dateF  = document.getElementById('proc-filter-date').value;
   const search = document.getElementById('proc-search').value.toLowerCase();
   procFiltered = procRawData.filter(r => {
+    if (regionF && procGetVal(r,'region') !== regionF) return false;
     if (typeF && procGetVal(r,'type') !== typeF) return false;
     if (deskF && procGetVal(r,'counter') !== deskF) return false;
     if (dateF && !procGetVal(r,'date').startsWith(dateF)) return false;
@@ -1297,6 +1323,17 @@ function procMakePie(id, data) {
 function procTopN(map, n=10){ return Object.entries(map).sort((a,b)=>b[1]-a[1]).slice(0,n); }
 function procCountBy(data, col){ const m={}; data.forEach(r=>{ const v=procGetVal(r,col)||'Unknown'; m[v]=(m[v]||0)+1; }); return m; }
 
+function procRenderRegionChart() {
+  const sortVal = document.getElementById('proc-region-sort').value;
+  const counts = procCountBy(procFiltered, 'region');
+  let entries = Object.entries(counts);
+  if (sortVal === 'desc')       entries.sort((a,b) => b[1]-a[1]);
+  else if (sortVal === 'asc')   entries.sort((a,b) => a[1]-b[1]);
+  else if (sortVal === 'alpha') entries.sort((a,b) => a[0].localeCompare(b[0]));
+  else                          entries.sort((a,b) => b[0].localeCompare(a[0]));
+  procMakeBar('proc-chart-region', 'Processed', entries);
+}
+
 function procRenderCharts() {
   procMakeBar('proc-chart-dest', 'Workers', procTopN(procCountBy(procFiltered,'destination')));
 
@@ -1313,6 +1350,7 @@ function procRenderCharts() {
 
   procMakeBar('proc-chart-pos', 'Workers', procTopN(procCountBy(procFiltered,'position')));
   procMakePie('proc-chart-gender', procTopN(procCountBy(procFiltered,'sex')));
+  procRenderRegionChart();
 }
 
 function getTypeBadgeClass(type) {
@@ -1378,9 +1416,10 @@ procDrop.addEventListener('drop', e => {
 });
 
 // Filter listeners
-['proc-filter-type','proc-filter-desk','proc-filter-date'].forEach(id =>
+['proc-filter-region','proc-filter-type','proc-filter-desk','proc-filter-date'].forEach(id =>
   document.getElementById(id).addEventListener('change', procApplyFilters));
 document.getElementById('proc-search').addEventListener('input', procApplyFilters);
+document.addEventListener('change', e => { if (e.target.id === 'proc-region-sort') procRenderRegionChart(); });
 
 // ══════════════════════════════════════
 // PROCESSED TAB — FIREBASE
