@@ -543,25 +543,32 @@ async function initFirebase() {
   try {
     const app = initializeApp(FB_CREDS);
     db = getFirestore(app);
-    await getDocs(collection(db, 'ofw_datasets'));
+    // Test connection with a real read
+    await getDocs(query(collection(db, 'ofw_datasets'), orderBy('createdAt','desc')));
     firebaseConnected = true;
     setFirebaseStatus(true);
     document.getElementById('save-fb-btn').style.display = '';
     loadSavedDatasets();
     procOnFirebaseReady();
   } catch(e) {
-    setFirebaseStatus(false);
-    console.warn('Firebase auto-connect failed:', e.message);
+    // If permission error — still mark connected, Firestore is reachable
+    if (e.code === 'permission-denied' || e.message?.includes('permission')) {
+      firebaseConnected = false;
+      setFirebaseStatus(false, 'Permission denied');
+      console.error('Firestore rules block access. Set rules to allow read/write: if true');
+    } else {
+      firebaseConnected = false;
+      setFirebaseStatus(false, 'Check console');
+      console.error('Firebase init failed:', e.code, e.message);
+    }
   }
 }
 
-initFirebase();
-
-function setFirebaseStatus(ok) {
+function setFirebaseStatus(ok, msg) {
   const el = document.getElementById('firebase-status');
   const txt = document.getElementById('fb-status-text');
   el.className = 'firebase-status ' + (ok ? 'connected' : 'error');
-  txt.textContent = ok ? 'Firebase connected' : 'Not connected';
+  txt.textContent = ok ? 'Firebase connected' : (msg || 'Not connected');
 }
 
 // ── Save to Firebase ──
@@ -1409,6 +1416,8 @@ window.deleteProcFromFirebase = async function(id) {
   }
 };
 
+// ── Start Firebase (called last so all functions are defined) ──
+initFirebase();
 </script>
 </body>
 </html>
